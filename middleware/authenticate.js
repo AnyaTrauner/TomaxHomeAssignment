@@ -38,12 +38,13 @@ function authenticate(req, res, next) {
   try {
     const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
 
-    if (!payload.clientId || typeof payload.clientId !== 'string') {
+    if (!payload.clientId || typeof payload.clientId !== 'string' || payload.clientId.trim() === '') {
       // Token is structurally valid but missing the required claim.
       return res.status(401).json({ error: 'Authentication required.' });
     }
 
-    req.clientId = payload.clientId;
+    // Normalise once here so every downstream handler receives a clean value.
+    req.clientId = payload.clientId.trim();
     return next();
   } catch (err) {
     // jwt.verify throws for expired, invalid signature, malformed, etc.

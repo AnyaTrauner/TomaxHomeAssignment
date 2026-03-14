@@ -1,5 +1,12 @@
+/*
+This is the original code:
+const mysql = require('mysql2'); 
+const db = mysql.createConnection({host: 'db.internal', user: 'admin', password: 'password123', database: 'invoices_db' }); 
+db.connect((err) => { 
+    if (err) { console.log('Database connection error:', err); } }); 
+module.exports = db;
+*/
 'use strict';
-
 require('dotenv').config();
 const mysql = require('mysql2');
 

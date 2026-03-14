@@ -20,13 +20,14 @@ jest.mock('../config/database', () => ({ query: jest.fn() }));
 
 const app = require('../app');
 const db = require('../config/database');
-const { bearerToken, expiredBearerToken } = require('./helpers/tokens');
+const { expiredBearerToken, bearerToken } = require('./helpers/tokens');
 const dbResult = require('./helpers/db');
+const { clients, postBodies } = require('./fixtures');
 
 // ---------------------------------------------------------------------------
 
-const VALID_TOKEN = bearerToken('client-001');
-const VALID_BODY = { amount: 99.99, description: 'Web design retainer' };
+const VALID_TOKEN = clients.owner.token;
+const VALID_BODY  = postBodies.valid;
 
 // Silence the centralised error handler's console.error for expected 500 tests.
 beforeEach(() => jest.spyOn(console, 'error').mockImplementation(() => {}));
@@ -55,7 +56,7 @@ describe('POST /invoices — authentication', () => {
   test('401 when token is expired', async () => {
     const res = await request(app)
       .post('/invoices')
-      .set('Authorization', expiredBearerToken('client-001'))
+      .set('Authorization', expiredBearerToken(clients.owner.id))
       .send(VALID_BODY);
     expect(res.status).toBe(401);
     expect(res.body).toHaveProperty('error');
@@ -124,7 +125,7 @@ describe('POST /invoices — input validation', () => {
     const res = await request(app)
       .post('/invoices')
       .set('Authorization', VALID_TOKEN)
-      .send({ description: 'Valid description' });
+      .send(postBodies.missingAmount);
     expect(res.status).toBe(400);
     expect(res.body.errors).toEqual(
       expect.arrayContaining([expect.stringContaining('amount')])
@@ -135,7 +136,7 @@ describe('POST /invoices — input validation', () => {
     const res = await request(app)
       .post('/invoices')
       .set('Authorization', VALID_TOKEN)
-      .send({ amount: '100', description: 'Valid description' });
+      .send(postBodies.amountAsString);
     expect(res.status).toBe(400);
     expect(res.body.errors).toEqual(
       expect.arrayContaining([expect.stringContaining('amount')])
@@ -146,7 +147,7 @@ describe('POST /invoices — input validation', () => {
     const res = await request(app)
       .post('/invoices')
       .set('Authorization', VALID_TOKEN)
-      .send({ amount: 0, description: 'Valid description' });
+      .send(postBodies.amountZero);
     expect(res.status).toBe(400);
   });
 
@@ -154,7 +155,7 @@ describe('POST /invoices — input validation', () => {
     const res = await request(app)
       .post('/invoices')
       .set('Authorization', VALID_TOKEN)
-      .send({ amount: -50, description: 'Valid description' });
+      .send(postBodies.amountNegative);
     expect(res.status).toBe(400);
   });
 
@@ -162,7 +163,7 @@ describe('POST /invoices — input validation', () => {
     const res = await request(app)
       .post('/invoices')
       .set('Authorization', VALID_TOKEN)
-      .send({ amount: null, description: 'Valid description' });
+      .send(postBodies.amountNull);
     expect(res.status).toBe(400);
   });
 
@@ -172,7 +173,7 @@ describe('POST /invoices — input validation', () => {
     const res = await request(app)
       .post('/invoices')
       .set('Authorization', VALID_TOKEN)
-      .send({ amount: 'Infinity', description: 'Valid description' });
+      .send(postBodies.amountInfinityString);
     expect(res.status).toBe(400);
   });
 
@@ -182,7 +183,7 @@ describe('POST /invoices — input validation', () => {
     const res = await request(app)
       .post('/invoices')
       .set('Authorization', VALID_TOKEN)
-      .send({ amount: 50 });
+      .send(postBodies.missingDescription);
     expect(res.status).toBe(400);
     expect(res.body.errors).toEqual(
       expect.arrayContaining([expect.stringContaining('description')])
@@ -193,7 +194,7 @@ describe('POST /invoices — input validation', () => {
     const res = await request(app)
       .post('/invoices')
       .set('Authorization', VALID_TOKEN)
-      .send({ amount: 50, description: '' });
+      .send(postBodies.descriptionEmpty);
     expect(res.status).toBe(400);
   });
 
@@ -201,7 +202,7 @@ describe('POST /invoices — input validation', () => {
     const res = await request(app)
       .post('/invoices')
       .set('Authorization', VALID_TOKEN)
-      .send({ amount: 50, description: '   ' });
+      .send(postBodies.descriptionWhitespace);
     expect(res.status).toBe(400);
   });
 
@@ -209,7 +210,7 @@ describe('POST /invoices — input validation', () => {
     const res = await request(app)
       .post('/invoices')
       .set('Authorization', VALID_TOKEN)
-      .send({ amount: 50, description: 123 });
+      .send(postBodies.descriptionNumber);
     expect(res.status).toBe(400);
   });
 
@@ -219,7 +220,7 @@ describe('POST /invoices — input validation', () => {
     const res = await request(app)
       .post('/invoices')
       .set('Authorization', VALID_TOKEN)
-      .send({ amount: -1, description: '' });
+      .send(postBodies.bothInvalid);
     expect(res.status).toBe(400);
     expect(res.body.errors).toHaveLength(2);
   });
@@ -228,7 +229,7 @@ describe('POST /invoices — input validation', () => {
     const res = await request(app)
       .post('/invoices')
       .set('Authorization', VALID_TOKEN)
-      .send({});
+      .send(postBodies.empty);
     expect(res.status).toBe(400);
     expect(res.body.errors).toHaveLength(2);
   });
@@ -256,14 +257,14 @@ describe('POST /invoices — success', () => {
 
     await request(app)
       .post('/invoices')
-      .set('Authorization', bearerToken('client-from-token'))
+      .set('Authorization', clients.stranger.token)
       // Even if the caller sends a different clientId in the body, it should
       // be ignored — the route uses req.clientId from the verified JWT.
-      .send({ ...VALID_BODY, clientId: 'client-from-body' });
+      .send({ ...VALID_BODY, clientId: clients.owner.id });
 
     // Verify the INSERT was called with the token's clientId, not the body's.
     const [, params] = db.query.mock.calls[0];
-    expect(params[0]).toBe('client-from-token');
+    expect(params[0]).toBe(clients.stranger.id);
   });
 
   test('strips surrounding whitespace from description before inserting', async () => {
@@ -272,7 +273,7 @@ describe('POST /invoices — success', () => {
     await request(app)
       .post('/invoices')
       .set('Authorization', VALID_TOKEN)
-      .send({ amount: 10, description: '  padded description  ' });
+      .send(postBodies.paddedDescription);
 
     const [, params] = db.query.mock.calls[0];
     expect(params[2]).toBe('padded description');

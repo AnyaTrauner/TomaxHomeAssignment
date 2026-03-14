@@ -89,6 +89,21 @@ describe('POST /invoices — authentication', () => {
     expect(res.body).toHaveProperty('error');
   });
 
+  test('401 when JWT clientId is a whitespace-only string', async () => {
+    const jwt = require('jsonwebtoken');
+    const tokenBlankClientId = jwt.sign(
+      { clientId: '   ' },
+      process.env.JWT_SECRET,
+      { algorithm: 'HS256', expiresIn: '1h' }
+    );
+    const res = await request(app)
+      .post('/invoices')
+      .set('Authorization', `Bearer ${tokenBlankClientId}`)
+      .send(VALID_BODY);
+    expect(res.status).toBe(401);
+    expect(res.body).toHaveProperty('error');
+  });
+
   test('401 when Authorization scheme is not Bearer', async () => {
     const res = await request(app)
       .post('/invoices')
@@ -261,6 +276,19 @@ describe('POST /invoices — success', () => {
 
     const [, params] = db.query.mock.calls[0];
     expect(params[2]).toBe('padded description');
+  });
+
+  test('stores trimmed clientId when JWT has surrounding whitespace', async () => {
+    db.query.mockResolvedValueOnce(dbResult.insertId(10));
+
+    await request(app)
+      .post('/invoices')
+      .set('Authorization', bearerToken('  client-padded  '))
+      .send(VALID_BODY);
+
+    const [, params] = db.query.mock.calls[0];
+    // clientId normalised by authenticate middleware — no surrounding whitespace in DB
+    expect(params[0]).toBe('client-padded');
   });
 });
 

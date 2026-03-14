@@ -90,6 +90,19 @@ describe('GET /invoices/:id — authentication', () => {
       .set('Authorization', `Bearer ${tokenNoClientId}`);
     expect(res.status).toBe(401);
   });
+
+  test('401 when JWT clientId is a whitespace-only string', async () => {
+    const jwt = require('jsonwebtoken');
+    const tokenBlankClientId = jwt.sign(
+      { clientId: '   ' },
+      process.env.JWT_SECRET,
+      { algorithm: 'HS256', expiresIn: '1h' }
+    );
+    const res = await request(app)
+      .get('/invoices/42')
+      .set('Authorization', `Bearer ${tokenBlankClientId}`);
+    expect(res.status).toBe(401);
+  });
 });
 
 // ---------------------------------------------------------------------------

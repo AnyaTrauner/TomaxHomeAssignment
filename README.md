@@ -167,7 +167,7 @@ tests/
 
 ---
 
-
+## API Reference
 
 ### `POST /invoices`
 

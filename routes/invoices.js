@@ -44,7 +44,7 @@ router.post('/', async (req, res, next) => {
     // Parameterised query — never interpolate user input into SQL strings.
     const [result] = await db.query(
       'INSERT INTO invoices (client_id, amount, description, created_at) VALUES (?, ?, ?, NOW())',
-      [clientId.trim(), amount, description.trim()]
+      [clientId, amount, description.trim()]
     );
     return res.status(201).json({ id: result.insertId });
   } catch (err) {

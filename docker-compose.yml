@@ -4,10 +4,10 @@ services:
     container_name: invoices_db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: invoices_db
-      MYSQL_USER: invoices_user
-      MYSQL_PASSWORD: invoices_pass
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-invoices_db}
+      MYSQL_USER: ${MYSQL_USER:-invoices_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-invoices_pass}
     ports:
       - "3306:3306"
     volumes:
@@ -19,7 +19,7 @@ services:
       - ./db/01_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
       - ./db/02_seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "invoices_user", "-pinvoices_pass"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${MYSQL_USER:-invoices_user}", "-p${MYSQL_PASSWORD:-invoices_pass}"]
       interval: 5s
       timeout: 5s
       retries: 10

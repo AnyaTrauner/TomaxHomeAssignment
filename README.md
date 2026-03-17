@@ -23,7 +23,7 @@ npm install
 cp .env.example .env
 ```
 
-The `.env.example` is pre-filled with the Docker Compose credentials. The only value you **must** set manually is `JWT_SECRET` — paste in any 32+ character random string:
+The `.env.example` file is a template pre-filled with the local Docker Compose credentials (example defaults). The only value you **must** set manually is `JWT_SECRET` — paste in any 32+ character random string:
 
 ```
 JWT_SECRET=replace-this-with-a-long-random-string-at-least-32-chars
@@ -327,6 +327,6 @@ tests/
   invoices.get.test.js  GET /invoices/:id test suite
 docker-compose.yml      MySQL 8 service for local development
 jest.config.js          Jest configuration
-.env.example            Template for required environment variables (Docker defaults pre-filled)
+.env.example            Template listing required environment variables (pre-filled with local Docker defaults)
 fix-notes.md            Code-review notes from the initial audit
 ```

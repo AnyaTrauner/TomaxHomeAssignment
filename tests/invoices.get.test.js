@@ -17,24 +17,13 @@ jest.mock('../config/database', () => ({ query: jest.fn() }));
 
 const app = require('../app');
 const db = require('../config/database');
-const { bearerToken, expiredBearerToken } = require('./helpers/tokens');
+const { expiredBearerToken } = require('./helpers/tokens');
 const dbResult = require('./helpers/db');
+const { clients, invoiceRows } = require('./fixtures');
 
 // ---------------------------------------------------------------------------
 
-const OWNER_CLIENT_ID = 'client-owner-001';
-const OTHER_CLIENT_ID = 'client-other-002';
-
-const OWNER_TOKEN = bearerToken(OWNER_CLIENT_ID);
-
-/** A fully-populated invoice row owned by OWNER_CLIENT_ID. */
-const INVOICE_ROW = {
-  id: 42,
-  client_id: OWNER_CLIENT_ID,
-  amount: 150.0,
-  description: 'Consulting — March 2026',
-  created_at: '2026-03-01T09:00:00.000Z',
-};
+const OWNER_TOKEN = clients.owner.token;
 
 // Silence console.error for expected 500 tests.
 beforeEach(() => jest.spyOn(console, 'error').mockImplementation(() => {}));
@@ -61,14 +50,14 @@ describe('GET /invoices/:id — authentication', () => {
   test('401 when token is expired', async () => {
     const res = await request(app)
       .get('/invoices/42')
-      .set('Authorization', expiredBearerToken(OWNER_CLIENT_ID));
+      .set('Authorization', expiredBearerToken(clients.owner.id));
     expect(res.status).toBe(401);
   });
 
   test('401 when token is signed with wrong secret', async () => {
     const jwt = require('jsonwebtoken');
     const badToken = jwt.sign(
-      { clientId: OWNER_CLIENT_ID },
+      { clientId: clients.owner.id },
       'wrong-secret',
       { algorithm: 'HS256' }
     );
@@ -138,7 +127,7 @@ describe('GET /invoices/:id — path parameter validation', () => {
     // it to 1 (an integer) and proceeds — this tests existing behaviour.
     // If you want to reject floats explicitly, add regex validation to the route.
     // This test documents the current behaviour so regressions are caught.
-    db.query.mockResolvedValueOnce(dbResult.rows([{ ...INVOICE_ROW, id: 1 }]));
+    db.query.mockResolvedValueOnce(dbResult.rows([invoiceRows.firstInvoice]));
     const res = await request(app)
       .get('/invoices/1.5')
       .set('Authorization', OWNER_TOKEN);
@@ -163,8 +152,7 @@ describe('GET /invoices/:id — ownership check', () => {
   });
 
   test('403 when invoice exists but belongs to a different client', async () => {
-    const foreignInvoice = { ...INVOICE_ROW, client_id: OTHER_CLIENT_ID };
-    db.query.mockResolvedValueOnce(dbResult.rows([foreignInvoice]));
+    db.query.mockResolvedValueOnce(dbResult.rows([invoiceRows.ownedByStranger]));
 
     // Request made by OWNER_CLIENT_ID, but invoice owned by OTHER_CLIENT_ID.
     const res = await request(app)
@@ -175,8 +163,7 @@ describe('GET /invoices/:id — ownership check', () => {
   });
 
   test('403 response does not expose the real owner clientId', async () => {
-    const foreignInvoice = { ...INVOICE_ROW, client_id: OTHER_CLIENT_ID };
-    db.query.mockResolvedValueOnce(dbResult.rows([foreignInvoice]));
+    db.query.mockResolvedValueOnce(dbResult.rows([invoiceRows.ownedByStranger]));
 
     const res = await request(app)
       .get('/invoices/42')
@@ -184,7 +171,7 @@ describe('GET /invoices/:id — ownership check', () => {
     expect(res.status).toBe(403);
     // The response body must not leak who owns the invoice.
     const body = JSON.stringify(res.body);
-    expect(body).not.toContain(OTHER_CLIENT_ID);
+    expect(body).not.toContain(clients.stranger.id);
   });
 });
 
@@ -194,7 +181,7 @@ describe('GET /invoices/:id — ownership check', () => {
 
 describe('GET /invoices/:id — success', () => {
   test('200 with invoice data when authenticated client owns the invoice', async () => {
-    db.query.mockResolvedValueOnce(dbResult.rows([INVOICE_ROW]));
+    db.query.mockResolvedValueOnce(dbResult.rows([invoiceRows.ownedByOwner]));
 
     const res = await request(app)
       .get('/invoices/42')
@@ -202,15 +189,15 @@ describe('GET /invoices/:id — success', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
-      id: INVOICE_ROW.id,
-      client_id: INVOICE_ROW.client_id,
-      amount: INVOICE_ROW.amount,
-      description: INVOICE_ROW.description,
+      id: invoiceRows.ownedByOwner.id,
+      client_id: invoiceRows.ownedByOwner.client_id,
+      amount: invoiceRows.ownedByOwner.amount,
+      description: invoiceRows.ownedByOwner.description,
     });
   });
 
   test('uses a parameterised query (passes id as a bound parameter, not inline)', async () => {
-    db.query.mockResolvedValueOnce(dbResult.rows([INVOICE_ROW]));
+    db.query.mockResolvedValueOnce(dbResult.rows([invoiceRows.ownedByOwner]));
 
     await request(app)
       .get('/invoices/42')
@@ -223,8 +210,7 @@ describe('GET /invoices/:id — success', () => {
   });
 
   test('200 is returned for invoice id = 1 (boundary: smallest valid id)', async () => {
-    const rowId1 = { ...INVOICE_ROW, id: 1 };
-    db.query.mockResolvedValueOnce(dbResult.rows([rowId1]));
+    db.query.mockResolvedValueOnce(dbResult.rows([invoiceRows.firstInvoice]));
 
     const res = await request(app)
       .get('/invoices/1')

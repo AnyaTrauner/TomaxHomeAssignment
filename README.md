@@ -6,17 +6,101 @@ A lightweight B2B SaaS invoicing REST API built with Node.js, Express, and MySQL
 
 ## Getting started
 
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) 20+  
+- [Docker](https://www.docker.com/) (for the local MySQL instance)
+
+### 1. Install dependencies
+
 ```bash
-# 1. Install dependencies
 npm install
+```
 
-# 2. Create your local environment file
+### 2. Create your local `.env`
+
+```bash
 cp .env.example .env
-# Edit .env and fill in DB_PASSWORD and JWT_SECRET
+```
 
-# 3. Start the server
+The `.env.example` file is a template pre-filled with the local Docker Compose credentials (example defaults). The only value you **must** set manually is `JWT_SECRET` — paste in any 32+ character random string:
+
+```
+JWT_SECRET=replace-this-with-a-long-random-string-at-least-32-chars
+```
+
+### 3. Start the database
+
+```bash
+npm run db:up
+```
+
+This starts a MySQL 8 container. On first boot it automatically runs `db/01_schema.sql` (creates the `invoices` table) then `db/02_seed.sql` (inserts demo data for three fictional clients). The data volume is persisted across restarts.
+
+Wait ~10 seconds for MySQL to initialise on the very first run. You can check readiness with:
+
+```bash
+docker compose logs -f db
+# Ready when you see: ready for connections
+```
+
+### 4. Generate a demo JWT
+
+All endpoints require an `Authorization` header in the form `Bearer YOUR_TOKEN`. Use the token script to mint one for any of the seeded client IDs:
+
+```bash
+npm run token demo-client-acme
+# or:
+npm run token demo-client-globex
+# or:
+npm run token demo-client-initech
+```
+
+The script prints the raw token, a ready-to-paste header value, and a curl example.
+
+### 5. Start the API
+
+```bash
+npm run dev      # auto-restarts on file changes
+# or:
 npm start
 ```
+
+### 6. Make a request
+
+```bash
+# Substitute the token printed in step 4.
+# Important: send the raw token value only (no angle brackets).
+curl -s http://localhost:3000/invoices/1 \
+  -H "Authorization: Bearer YOUR_TOKEN" | jq
+```
+
+If `jq` is not installed on Windows, use PowerShell-native formatting instead:
+
+```powershell
+$token = "your-token-without-angle-brackets"
+Invoke-RestMethod -Uri "http://localhost:3000/invoices/1" -Headers @{ Authorization = "Bearer $token" } | ConvertTo-Json -Depth 10
+```
+
+### Resetting demo data
+
+To wipe the database volume and re-seed from scratch:
+
+```bash
+npm run db:reset
+```
+
+### npm scripts reference
+
+| Script | What it does |
+|--------|-------------|
+| `npm start` | Start the server (production mode) |
+| `npm run dev` | Start with `--watch` (auto-restart on save) |
+| `npm run db:up` | Start the MySQL container in the background |
+| `npm run db:down` | Stop the MySQL container (data volume preserved) |
+| `npm run db:reset` | Destroy the data volume and re-run schema + seed |
+| `npm run token <clientId>` | Generate a signed JWT for a client ID |
+| `npm test` | Run the test suite |
 
 ---
 
@@ -56,7 +140,7 @@ For a real deployment, tokens would be issued by an identity/auth service (e.g.,
 Include a signed JWT in the `Authorization` header of every request:
 
 ```
-Authorization: Bearer <token>
+Authorization: Bearer YOUR_TOKEN
 ```
 
 ### Required JWT claims
@@ -130,7 +214,7 @@ Individual tests then configure what `db.query` resolves or rejects to using hel
 
 Tests use the same `JWT_SECRET` that the app reads at runtime. The secret is set by `tests/setup.js` (a Jest `setupFiles` entry that runs before any module is imported). The `tests/helpers/tokens.js` module provides:
 
-- `bearerToken(clientId)` — returns a valid `Authorization: Bearer <token>` header value
+- `bearerToken(clientId)` — returns a valid `Authorization: Bearer YOUR_TOKEN` header value
 - `expiredBearerToken(clientId)` — same but already expired
 
 ### Test file structure
@@ -228,14 +312,21 @@ middleware/
   authenticate.js       JWT verification; attaches req.clientId
 routes/
   invoices.js           /invoices route handlers
+db/
+  01_schema.sql         CREATE TABLE statements (auto-run by Docker on first start)
+  02_seed.sql           Demo data for three fictional clients
+scripts/
+  generate-token.js     Mint a signed JWT for a given clientId (local dev helper)
 tests/
   setup.js              Jest setupFiles — sets env vars before module load
+  fixtures.js           Shared mock data (clients, invoice rows, POST bodies)
   helpers/
     tokens.js           JWT generation helpers for tests
     db.js               Mock return-value builders for db.query
   invoices.post.test.js POST /invoices test suite
   invoices.get.test.js  GET /invoices/:id test suite
+docker-compose.yml      MySQL 8 service for local development
 jest.config.js          Jest configuration
-.env.example            Template for required environment variables
+.env.example            Template listing required environment variables (pre-filled with local Docker defaults)
 fix-notes.md            Code-review notes from the initial audit
 ```

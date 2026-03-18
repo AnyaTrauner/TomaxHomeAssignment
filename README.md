@@ -4,7 +4,7 @@ A lightweight B2B SaaS invoicing REST API built with Node.js, Express, SQLite (d
 
 ---
 
-## Run localy
+## Run locally
 
 Step-by-step guide for getting the server running on a fresh machine with SQLite.
 Production can use MySQL via environment config.
@@ -43,6 +43,12 @@ npm install
 
 ```bash
 cp .env.example .env
+```
+
+PowerShell equivalent:
+
+```powershell
+Copy-Item .env.example .env
 ```
 
 Open `.env` and set `JWT_SECRET` to any random string of **32+ characters**.
@@ -132,7 +138,7 @@ npm run db:reset
 npm test
 ```
 
-Expected: **41 tests, 0 failures**.
+Expected: **53 tests, 0 failures**.
 
 ### Useful commands
 

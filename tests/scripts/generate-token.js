@@ -2,17 +2,17 @@
 'use strict';
 
 /**
- * scripts/generate-token.js
+ * tests/scripts/generate-token.js
  *
  * Generates a signed JWT for a given clientId and prints it to stdout.
  * Useful for testing the API locally with curl or a REST client.
  *
  * Usage:
- *   node scripts/generate-token.js <clientId> [expiresIn]
+ *   node tests/scripts/generate-token.js <clientId> [expiresIn]
  *
  * Examples:
- *   node scripts/generate-token.js demo-client-acme
- *   node scripts/generate-token.js demo-client-globex 24h
+ *   node tests/scripts/generate-token.js demo-client-acme
+ *   node tests/scripts/generate-token.js demo-client-globex 24h
  *
  * The JWT_SECRET is read from a .env file in the project root (via dotenv).
  * Make sure your .env exists and has JWT_SECRET set before running this.
@@ -31,7 +31,7 @@ const clientId  = process.argv[2];
 const expiresIn = process.argv[3] || '8h';
 
 if (!clientId) {
-  console.error('Usage: node scripts/generate-token.js <clientId> [expiresIn]');
+  console.error('Usage: node tests/scripts/generate-token.js <clientId> [expiresIn]');
   console.error('');
   console.error('Demo client IDs (from seed data):');
   console.error('  demo-client-acme');

@@ -80,6 +80,25 @@ describe('GET /invoices/:id — authentication', () => {
     expect(res.status).toBe(401);
   });
 
+  test.each([
+    ['number', 123],
+    ['object', { id: 'client-1' }],
+    ['array', ['client-1']],
+  ])('401 when JWT clientId claim is %s', async (_label, badClientId) => {
+    const jwt = require('jsonwebtoken');
+    const badTypeToken = jwt.sign(
+      { clientId: badClientId },
+      process.env.JWT_SECRET,
+      { algorithm: 'HS256', expiresIn: '1h' }
+    );
+
+    const res = await request(app)
+      .get('/invoices/42')
+      .set('Authorization', `Bearer ${badTypeToken}`);
+
+    expect(res.status).toBe(401);
+  });
+
   test('401 when JWT clientId is a whitespace-only string', async () => {
     const jwt = require('jsonwebtoken');
     const tokenBlankClientId = jwt.sign(
@@ -122,17 +141,25 @@ describe('GET /invoices/:id — path parameter validation', () => {
   });
 
   test('400 when id is a float', async () => {
-    // parseInt('1.5') === 1, but the raw param '1.5' should NOT pass
-    // because parseInt coerces it. Let's confirm the route actually resolves
-    // it to 1 (an integer) and proceeds — this tests existing behaviour.
-    // If you want to reject floats explicitly, add regex validation to the route.
-    // This test documents the current behaviour so regressions are caught.
-    db.query.mockResolvedValueOnce(dbResult.rows([invoiceRows.firstInvoice]));
+    // Strict validator rejects float-like IDs.
     const res = await request(app)
       .get('/invoices/1.5')
       .set('Authorization', OWNER_TOKEN);
-    // parseInt('1.5', 10) === 1 — treated as id=1, proceeds to DB
-    expect([200, 403, 404]).toContain(res.status);
+    expect(res.status).toBe(400);
+  });
+
+  test('400 when id contains alphanumeric suffix', async () => {
+    const res = await request(app)
+      .get('/invoices/1abc')
+      .set('Authorization', OWNER_TOKEN);
+    expect(res.status).toBe(400);
+  });
+
+  test('400 when id has leading zero', async () => {
+    const res = await request(app)
+      .get('/invoices/01')
+      .set('Authorization', OWNER_TOKEN);
+    expect(res.status).toBe(400);
   });
 });
 

@@ -61,6 +61,12 @@ Provider defaults:
 
 > **Never commit `.env` to source control.**
 
+Provider defaults:
+- dev/test: SQLite
+- production: MySQL
+
+> **Never commit `.env` to source control.**
+
 ### Step 4 — Initialize local SQLite database
 
 ```bash
@@ -376,6 +382,6 @@ tests/
   invoices.post.test.js POST /invoices test suite
   invoices.get.test.js  GET /invoices/:id test suite
 jest.config.js          Jest configuration
-.env.example            Template for required environment variables (SQLite defaults pre-filled)
+.env.example            Template for required environment variables (Docker defaults pre-filled)
 fix-notes.md            Code-review notes from the initial audit
 ```

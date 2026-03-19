@@ -1,6 +1,6 @@
 ## PR Review — `feat: add bulk invoice export to CSV`
 Nice work - the code is clear and straightforward. 
-Before merge, inspite the implementation direction is correct I saw a few critical issues we should fix.
+Before merge, despite the implementation direction is correct I saw a few critical issues we should fix.
 In the future you can take this as an example for any new API you will develop.
 
 ### ✅ Blocking issues (must fix before merge)

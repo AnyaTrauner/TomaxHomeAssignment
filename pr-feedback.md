@@ -46,4 +46,4 @@ In the future you can take this as an example for any new API you will develop.
    - Add explicit `ORDER BY created_at DESC`.
    - Makes exports predictable and easier to debug.
 
-Please don't hasitate to ask me for help in implementing these changes.
+Please don't hesitate to ask me for help in implementing these changes.

@@ -4,7 +4,7 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2');
-const sqlite3 = require('sqlite3');
+
 
 function resolveProvider() {
   const explicit = process.env.DB_PROVIDER;
@@ -47,6 +47,7 @@ function createMysqlAdapter() {
 }
 
 function createSqliteAdapter() {
+  const sqlite3 = require('sqlite3');
   const sqlitePath = process.env.SQLITE_PATH || './tests/data/invoices.sqlite';
   const resolvedSqlitePath = path.resolve(process.cwd(), sqlitePath);
   const dataDir = path.dirname(resolvedSqlitePath);

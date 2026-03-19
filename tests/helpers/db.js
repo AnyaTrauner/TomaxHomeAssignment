@@ -11,8 +11,8 @@
  *   db.query.mockResolvedValue(dbResult.empty());
  *   db.query.mockRejectedValue(dbResult.dbError());
  *
- * mysql2's promise pool returns [results, fields] from every .query() call.
- * These helpers mirror that shape so the route handlers work without change.
+ * The runtime DB adapter returns [results, metadata] from every .query() call.
+ * These helpers mirror that shape so route handlers work without change.
  */
 
 'use strict';

@@ -1,106 +1,164 @@
 # Invoicing API
 
-A lightweight B2B SaaS invoicing REST API built with Node.js, Express, and MySQL.
+A lightweight B2B SaaS invoicing REST API built with Node.js, Express, SQLite (dev/test), and MySQL (production).
 
 ---
 
-## Getting started
+## Run locally
+
+Step-by-step guide for getting the server running on a fresh machine with SQLite.
+Production can use MySQL via environment config.
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) 20+  
-- [Docker](https://www.docker.com/) (for the local MySQL instance)
+Install these tools if they are not already present.
 
-### 1. Install dependencies
+| Tool | Minimum version | Download |
+|------|-----------------|----------|
+| **Node.js** | 20 LTS | https://nodejs.org |
+| **Git** | any recent | https://git-scm.com |
+| **jq** *(optional)* | any | https://jqlang.github.io/jq — pretty-prints JSON in curl responses |
+
+Verify installs:
+
+```bash
+node -v        # should print v20.x or higher
+git --version
+```
+
+### Step 1 — Clone the repository
+
+```bash
+git clone <repository-url>
+cd TomaxHomeAssignment
+```
+
+### Step 2 — Install Node dependencies
 
 ```bash
 npm install
 ```
 
-### 2. Create your local `.env`
+### Step 3 — Create the environment file
 
 ```bash
 cp .env.example .env
 ```
 
-The `.env.example` file is a template pre-filled with the local Docker Compose credentials (example defaults). The only value you **must** set manually is `JWT_SECRET` — paste in any 32+ character random string:
+PowerShell equivalent:
 
-```
-JWT_SECRET=replace-this-with-a-long-random-string-at-least-32-chars
+```powershell
+Copy-Item .env.example .env
 ```
 
-### 3. Start the database
+Open `.env` and set `JWT_SECRET` to any random string of **32+ characters**.
+
+```dotenv
+NODE_ENV=development
+PORT=3000
+DB_PROVIDER=sqlite
+SQLITE_PATH=./tests/data/invoices.sqlite
+JWT_SECRET=replace-this-with-a-long-random-secret-at-least-32-chars
+```
+
+Provider defaults:
+- dev/test: SQLite
+- production: MySQL
+
+> **Never commit `.env` to source control.**
+
+Provider defaults:
+- dev/test: SQLite
+- production: MySQL
+
+> **Never commit `.env` to source control.**
+
+### Step 4 — Initialize local SQLite database
 
 ```bash
-npm run db:up
+npm run db:init
 ```
 
-This starts a MySQL 8 container. On first boot it automatically runs `db/01_schema.sql` (creates the `invoices` table) then `db/02_seed.sql` (inserts demo data for three fictional clients). The data volume is persisted across restarts.
+This creates `./tests/data/invoices.sqlite`, applies schema from `tests/db/sqlite-schema.sql`, and inserts demo rows from `tests/db/sqlite-seed.sql` when the table is empty.
 
-Wait ~10 seconds for MySQL to initialise on the very first run. You can check readiness with:
+### Step 5 — Start the API
 
 ```bash
-docker compose logs -f db
-# Ready when you see: ready for connections
+npm run dev
 ```
 
-### 4. Generate a demo JWT
+The server starts on **http://localhost:3000** and auto-restarts on file changes.
 
-All endpoints require an `Authorization` header in the form `Bearer YOUR_TOKEN`. Use the token script to mint one for any of the seeded client IDs:
+Expected output includes:
+
+```
+SQLite database opened at .../tests/data/invoices.sqlite
+Server listening on port 3000
+```
+
+### Step 6 — Generate a demo JWT
+
+All endpoints require an `Authorization` header in the form `Bearer YOUR_TOKEN`.
+
+Demo client IDs:
+- `demo-client-acme`
+- `demo-client-globex`
+- `demo-client-initech`
+
+Generate a token:
 
 ```bash
 npm run token demo-client-acme
-# or:
-npm run token demo-client-globex
-# or:
-npm run token demo-client-initech
 ```
 
-The script prints the raw token, a ready-to-paste header value, and a curl example.
-
-### 5. Start the API
+### Step 7 — Make your first request
 
 ```bash
-npm run dev      # auto-restarts on file changes
-# or:
-npm start
-```
-
-### 6. Make a request
-
-```bash
-# Substitute the token printed in step 4.
-# Important: send the raw token value only (no angle brackets).
 curl -s http://localhost:3000/invoices/1 \
   -H "Authorization: Bearer YOUR_TOKEN" | jq
 ```
 
-If `jq` is not installed on Windows, use PowerShell-native formatting instead:
+PowerShell fallback (no `jq`):
 
 ```powershell
-$token = "your-token-without-angle-brackets"
+$token = "YOUR_TOKEN"
 Invoke-RestMethod -Uri "http://localhost:3000/invoices/1" -Headers @{ Authorization = "Bearer $token" } | ConvertTo-Json -Depth 10
 ```
 
-### Resetting demo data
-
-To wipe the database volume and re-seed from scratch:
+### Step 8 — Reset demo data
 
 ```bash
 npm run db:reset
+# then start app again (or run npm run db:init)
 ```
 
-### npm scripts reference
+### Step 9 — Run tests
 
-| Script | What it does |
-|--------|-------------|
-| `npm start` | Start the server (production mode) |
-| `npm run dev` | Start with `--watch` (auto-restart on save) |
-| `npm run db:up` | Start the MySQL container in the background |
-| `npm run db:down` | Stop the MySQL container (data volume preserved) |
-| `npm run db:reset` | Destroy the data volume and re-run schema + seed |
-| `npm run token <clientId>` | Generate a signed JWT for a client ID |
-| `npm test` | Run the test suite |
+```bash
+npm test
+```
+
+Expected: **53 tests, 0 failures**.
+
+### Useful commands
+
+| Command | What it does |
+|---------|-------------|
+| `npm run dev` | Start API with auto-restart |
+| `npm start` | Start API (no auto-restart) |
+| `npm run db:init` | Create/verify SQLite schema + seed |
+| `npm run db:reset` | Delete SQLite DB file |
+| `npm run token <clientId>` | Generate a signed JWT |
+| `npm test` | Run test suite |
+
+### Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| `jq : The term 'jq' is not recognized...` | `jq` is not installed on this machine | Install `jq`, or use `Invoke-RestMethod ... \| ConvertTo-Json` |
+| `401 Authentication required.` | Token format issue or `JWT_SECRET` mismatch | Use raw token (no `< >`) and regenerate via `npm run token ...` |
+| `no such table: invoices` | DB file exists but schema wasn't initialized | Run `npm run db:init` (or `npm run db:reset` then restart) |
+| Port 3000 already in use | Another process is bound to 3000 | Change `PORT` in `.env` and restart |
 
 ---
 
@@ -110,14 +168,13 @@ npm run db:reset
 |----------|----------|-------------|
 | `NODE_ENV` | No | `development` (default) or `production` |
 | `PORT` | No | Port the HTTP server binds to (default `3000`) |
-| `DB_HOST` | Yes | MySQL host |
-| `DB_USER` | Yes | MySQL username |
-| `DB_PASSWORD` | Yes | MySQL password |
-| `DB_NAME` | Yes | MySQL database name |
+| `DB_PROVIDER` | No | `sqlite` or `mysql` (defaults: sqlite in non-prod, mysql in prod) |
+| `SQLITE_PATH` | Conditionally | Path to local SQLite DB file (used when `DB_PROVIDER=sqlite`, default `./tests/data/invoices.sqlite`) |
+| `DB_HOST` | Conditionally | MySQL host (used when `DB_PROVIDER=mysql`) |
+| `DB_USER` | Conditionally | MySQL username (used when `DB_PROVIDER=mysql`) |
+| `DB_PASSWORD` | Conditionally | MySQL password (used when `DB_PROVIDER=mysql`) |
+| `DB_NAME` | Conditionally | MySQL database name (used when `DB_PROVIDER=mysql`) |
 | `JWT_SECRET` | Yes | Secret used to sign and verify JWT tokens — use 32+ random characters |
-
-**Never commit `.env` to source control.** `.env` is listed in `.gitignore`.  
-A template with all required variable names (no values) is in `.env.example`.
 
 ---
 
@@ -181,7 +238,9 @@ console.log(token);
 npm test
 ```
 
-No running MySQL instance is required. The database layer (`config/database.js`) is replaced with a Jest mock in every test file, so tests are fully self-contained and can run from a clean clone.
+No running SQLite instance is required. The database layer (`config/database.js`) is replaced with a Jest mock in every test file, so tests are fully self-contained and can run from a clean clone.
+
+For a full explanation of the testing approach and scenario-by-scenario coverage, see [tests.md](tests.md).
 
 ### Framework choices
 
@@ -206,7 +265,7 @@ Each test file mocks `config/database.js` at the top using Jest's module mock:
 jest.mock('../config/database', () => ({ query: jest.fn() }));
 ```
 
-This completely replaces the module before any route code is loaded. The real MySQL pool, connection logic, and `process.exit` guard inside `config/database.js` **never run during tests**.
+This completely replaces the module before any route code is loaded. The real SQLite file opening and init logic inside `config/database.js` **never run during tests**.
 
 Individual tests then configure what `db.query` resolves or rejects to using helpers from `tests/helpers/db.js`.
 
@@ -264,7 +323,7 @@ Create a new invoice for the authenticated client.
 | Field | Type | Constraints |
 |-------|------|-------------|
 | `amount` | `number` | Positive, finite |
-| `description` | `string` | Non-empty |
+| `description` | `string` | Non-empty, max 500 characters |
 
 **Responses:**
 
@@ -283,7 +342,7 @@ Return a single invoice by ID.
 
 **Auth:** Required (JWT). The invoice is only returned if the authenticated client owns it.
 
-**Path parameter:** `id` — positive integer.
+**Path parameter:** `id` — strict positive integer (no floats, no alphanumeric suffixes, no leading zeros).
 
 **Responses:**
 
@@ -307,17 +366,20 @@ Return a single invoice by ID.
 server.js               Entry point — starts the HTTP server
 app.js                  Express application (exported without listen; used by tests)
 config/
-  database.js           MySQL connection pool (env-configured)
+  database.js           SQLite adapter with auto schema/seed init
 middleware/
   authenticate.js       JWT verification; attaches req.clientId
 routes/
   invoices.js           /invoices route handlers
-db/
-  01_schema.sql         CREATE TABLE statements (auto-run by Docker on first start)
-  02_seed.sql           Demo data for three fictional clients
-scripts/
-  generate-token.js     Mint a signed JWT for a given clientId (local dev helper)
 tests/
+  data/                 SQLite DB files (`invoices.sqlite`, `test.sqlite`)
+  db/
+    sqlite-schema.sql   CREATE TABLE statements for SQLite
+    sqlite-seed.sql     Demo data for three fictional clients
+  scripts/
+    generate-token.js   Mint a signed JWT for a given clientId (local dev helper)
+    sqlite-init.js      Initialize SQLite schema/seed
+    sqlite-reset.js     Delete SQLite DB file to reset local data
   setup.js              Jest setupFiles — sets env vars before module load
   fixtures.js           Shared mock data (clients, invoice rows, POST bodies)
   helpers/
@@ -325,8 +387,7 @@ tests/
     db.js               Mock return-value builders for db.query
   invoices.post.test.js POST /invoices test suite
   invoices.get.test.js  GET /invoices/:id test suite
-docker-compose.yml      MySQL 8 service for local development
 jest.config.js          Jest configuration
-.env.example            Template listing required environment variables (pre-filled with local Docker defaults)
+.env.example            Template for required environment variables (Docker defaults pre-filled)
 fix-notes.md            Code-review notes from the initial audit
 ```

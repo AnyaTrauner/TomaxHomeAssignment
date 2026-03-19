@@ -21,6 +21,8 @@ function validateInvoiceBody(body) {
   }
   if (!description || typeof description !== 'string' || description.trim() === '') {
     errors.push('description is required and must be a non-empty string.');
+  } else if (description.trim().length > 500) {
+    errors.push('description must be 500 characters or fewer.');
   }
 
   return errors;
@@ -43,7 +45,7 @@ router.post('/', async (req, res, next) => {
   try {
     // Parameterised query — never interpolate user input into SQL strings.
     const [result] = await db.query(
-      'INSERT INTO invoices (client_id, amount, description, created_at) VALUES (?, ?, ?, NOW())',
+      'INSERT INTO invoices (client_id, amount, description, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
       [clientId, amount, description.trim()]
     );
     return res.status(201).json({ id: result.insertId });
@@ -55,10 +57,12 @@ router.post('/', async (req, res, next) => {
 
 // Get invoice by ID
 router.get('/:id', async (req, res, next) => {
-  const id = parseInt(req.params.id, 10);
-  if (!Number.isInteger(id) || id <= 0) {
+  const idParam = req.params.id;
+  // Strict positive integer: disallow floats, alpha suffixes, and leading zeros.
+  if (!/^[1-9]\d*$/.test(idParam)) {
     return res.status(400).json({ error: 'Invoice ID must be a positive integer.' });
   }
+  const id = parseInt(idParam, 10);
 
   try {
     const [rows] = await db.query(

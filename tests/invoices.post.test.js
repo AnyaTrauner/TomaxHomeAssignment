@@ -90,6 +90,27 @@ describe('POST /invoices — authentication', () => {
     expect(res.body).toHaveProperty('error');
   });
 
+  test.each([
+    ['number', 123],
+    ['object', { id: 'client-1' }],
+    ['array', ['client-1']],
+  ])('401 when JWT clientId claim is %s', async (_label, badClientId) => {
+    const jwt = require('jsonwebtoken');
+    const badTypeToken = jwt.sign(
+      { clientId: badClientId },
+      process.env.JWT_SECRET,
+      { algorithm: 'HS256', expiresIn: '1h' }
+    );
+
+    const res = await request(app)
+      .post('/invoices')
+      .set('Authorization', `Bearer ${badTypeToken}`)
+      .send(VALID_BODY);
+
+    expect(res.status).toBe(401);
+    expect(res.body).toHaveProperty('error');
+  });
+
   test('401 when JWT clientId is a whitespace-only string', async () => {
     const jwt = require('jsonwebtoken');
     const tokenBlankClientId = jwt.sign(
@@ -212,6 +233,32 @@ describe('POST /invoices — input validation', () => {
       .set('Authorization', VALID_TOKEN)
       .send(postBodies.descriptionNumber);
     expect(res.status).toBe(400);
+  });
+
+  test('201 when description length is exactly 500 characters', async () => {
+    db.query.mockResolvedValueOnce(dbResult.insertId(111));
+    const description500 = 'a'.repeat(500);
+
+    const res = await request(app)
+      .post('/invoices')
+      .set('Authorization', VALID_TOKEN)
+      .send({ amount: 25, description: description500 });
+
+    expect(res.status).toBe(201);
+  });
+
+  test('400 when description exceeds 500 characters', async () => {
+    const description501 = 'a'.repeat(501);
+
+    const res = await request(app)
+      .post('/invoices')
+      .set('Authorization', VALID_TOKEN)
+      .send({ amount: 25, description: description501 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.errors).toEqual(
+      expect.arrayContaining([expect.stringContaining('500')])
+    );
   });
 
   // multiple errors at once --------------------------------------------------

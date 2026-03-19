@@ -6,10 +6,9 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "db:up": "docker compose up -d db",
-    "db:down": "docker compose down",
-    "db:reset": "docker compose down -v && docker compose up -d db",
-    "token": "node scripts/generate-token.js",
+    "db:init": "node tests/scripts/sqlite-init.js",
+    "db:reset": "node tests/scripts/sqlite-reset.js",
+    "token": "node tests/scripts/generate-token.js",
     "test": "jest --runInBand --detectOpenHandles"
   },
   "dependencies": {
@@ -17,8 +16,9 @@
     "express": "^4.19.2",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.12.0",
     "morgan": "^1.10.0",
-    "mysql2": "^3.9.7"
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "jest": "^30.3.0",

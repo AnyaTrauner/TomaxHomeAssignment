@@ -6,7 +6,7 @@ To help bridge good onboarding and the Python → Node.js transition, I would pr
 
 ### Team Resources
 - A list of key company employees and their areas of ownership (R&D, Product< Support, etc.).
-- "Buddy" - a team member that will be availiable anytime for questions and assistance (can be me or someone Seniour from the team)
+- "Buddy" - a team member that will be availiable anytime for questions and assistance (can be me or someone Senior from the team)
 
 ### Technical Resources
 - Internal architecture documentation, including the system overview, service boundaries, and database schema.
